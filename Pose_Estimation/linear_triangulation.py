@@ -1,6 +1,6 @@
 import numpy as np
 
-from VO_VAMR_2022.Pose_Estimation.utils import cross2Matrix
+from Pose_Estimation.utils import cross2Matrix
 
 def linearTriangulation(p1, p2, M1, M2):
     """ Linear Triangulation

@@ -1,6 +1,6 @@
 import numpy as np
 
-from VO_VAMR_2022.Pose_Estimation.linear_triangulation import linearTriangulation
+from Pose_Estimation.linear_triangulation import linearTriangulation
 
 def disambiguateRelativePose(Rots,u3,points0_h,points1_h,K1,K2):
     """ DISAMBIGUATERELATIVEPOSE- finds the correct relative camera pose (among

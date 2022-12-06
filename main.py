@@ -2,17 +2,17 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from VO_VAMR_2022.Key_Points.shi_tomasi import shi_tomasi
-from VO_VAMR_2022.Key_Points.harris import harris
-from VO_VAMR_2022.Key_Points.selectKeypoints import selectKeypoints
-from VO_VAMR_2022.Key_Points.describeKeypoints import describeKeypoints
-from VO_VAMR_2022.Key_Points.matchDescriptors import matchDescriptors
-from VO_VAMR_2022.Key_Points.plotMatches import plotMatches
-from VO_VAMR_2022.Pose_Estimation.estimate_essential_matrix import estimateEssentialMatrix
-from VO_VAMR_2022.Pose_Estimation.decompose_essential_matrix import decomposeEssentialMatrix
-from VO_VAMR_2022.Pose_Estimation.disambiguate_relative_pose import disambiguateRelativePose
-from VO_VAMR_2022.Pose_Estimation.linear_triangulation import linearTriangulation
-from VO_VAMR_2022.Pose_Estimation.draw_camera import drawCamera
+from Key_Points.shi_tomasi import shi_tomasi
+from Key_Points.harris import harris
+from Key_Points.selectKeypoints import selectKeypoints
+from Key_Points.describeKeypoints import describeKeypoints
+from Key_Points.matchDescriptors import matchDescriptors
+from Key_Points.plotMatches import plotMatches
+from Pose_Estimation.estimate_essential_matrix import estimateEssentialMatrix
+from Pose_Estimation.decompose_essential_matrix import decomposeEssentialMatrix
+from Pose_Estimation.disambiguate_relative_pose import disambiguateRelativePose
+from Pose_Estimation.linear_triangulation import linearTriangulation
+from Pose_Estimation.draw_camera import drawCamera
 
 matplotlib.use('TkAgg')
 # Randomly chosen parameters that seem to work well - can you find better ones?

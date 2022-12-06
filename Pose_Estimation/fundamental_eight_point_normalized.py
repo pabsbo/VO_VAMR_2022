@@ -1,7 +1,7 @@
 import numpy as np
 
-from VO_VAMR_2022.Pose_Estimation.fundamental_eight_point import fundamentalEightPoint
-from VO_VAMR_2022.Pose_Estimation.normalise_2D_pts import normalise2DPts
+from Pose_Estimation.fundamental_eight_point import fundamentalEightPoint
+from Pose_Estimation.normalise_2D_pts import normalise2DPts
 
 def fundamentalEightPointNormalized(p1, p2):
     """ Normalized Version of the 8 Point algorith

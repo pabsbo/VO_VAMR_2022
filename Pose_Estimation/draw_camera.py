@@ -1,6 +1,6 @@
 import numpy as np
 
-from VO_VAMR_2022.Pose_Estimation.arrow_3d import Arrow3D
+from Pose_Estimation.arrow_3d import Arrow3D
 
 def drawCamera(ax, position, direction, length_scale = 1, head_size = 10, 
         equal_axis = True, set_ax_limits = True):

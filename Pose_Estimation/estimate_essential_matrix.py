@@ -1,6 +1,6 @@
 import numpy
 
-from VO_VAMR_2022.Pose_Estimation.fundamental_eight_point_normalized import fundamentalEightPointNormalized
+from Pose_Estimation.fundamental_eight_point_normalized import fundamentalEightPointNormalized
 
 
 def estimateEssentialMatrix(p1, p2, K1, K2):
