@@ -101,6 +101,7 @@ def ransacLocalization(matched_query_keypoints, corresponding_landmarks, K):
         max_num_inliers_history.append(max_num_inliers)
 
         i += 1
+
     if max_num_inliers == 0:
         R_C_W = None
         t_C_W = None
