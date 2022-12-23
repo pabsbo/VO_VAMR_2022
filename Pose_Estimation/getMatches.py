@@ -39,13 +39,7 @@ def getMatches2(matches, query_keypoints, database_keypoints):
 
 
 def extendPoint(p1):
-    x = p1[:, 0]
-    y = p1[:, 1]
-
-    p1 = np.stack((x, y))
-    p1 = np.r_[p1, np.ones((1, p1.shape[1]))]
-
-    return p1
+    return np.r_[p1.T, np.ones((1, p1.shape[0]))]
 
 
 def pointsToUV(p1):

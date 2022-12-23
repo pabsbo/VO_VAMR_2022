@@ -12,7 +12,7 @@ from Pose_Estimation.disambiguate_relative_pose import disambiguateRelativePose
 from Pose_Estimation.linear_triangulation import linearTriangulation
 from Pose_Estimation.draw_camera import drawCamera
 from Pose_Estimation.getMatches import getMatches, pointsToUV, getMatches2, extendPoint
-
+from Pose_Estimation.plotMatches import plotMatches
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
 
@@ -21,7 +21,7 @@ matplotlib.use('TkAgg')
 # Parameters used in previous exercises
 corner_patch_size = 9
 harris_kappa = 0.08
-num_keypoints = 1000
+num_keypoints = 200 #1000
 nonmaximum_supression_radius = 8
 descriptor_radius = 9
 match_lambda = 5
@@ -43,44 +43,53 @@ img_2 = cv2.imread('../data/kitti/05/image_0/000002.png', cv2.IMREAD_GRAYSCALE)
 
 # Select keypoints and descriptors of image 1 and 2
 harris_scores = harris(img, corner_patch_size, harris_kappa)
-keypoints = selectKeypoints(harris_scores, num_keypoints, nonmaximum_supression_radius)
+keypoints = selectKeypoints(harris_scores, num_keypoints, nonmaximum_supression_radius) # [0,:]: row(y-loc in graph), [1,:] : column (x-loc in graph)
 descriptors = describeKeypoints(img, keypoints, descriptor_radius)
-keypoints = pointsToUV(keypoints)
 
 harris_scores_2 = harris(img_2, corner_patch_size, harris_kappa)
 keypoints_2 = selectKeypoints(harris_scores_2, num_keypoints, nonmaximum_supression_radius)
 descriptors_2 = describeKeypoints(img_2, keypoints_2, descriptor_radius)
-keypoints_2 = pointsToUV(keypoints_2)
 
 # Match descriptors between first two images
-matches = matchDescriptors(descriptors, descriptors_2, match_lambda)
+matches = matchDescriptors(descriptors_2, descriptors, match_lambda)
 
-p1 = np.squeeze(keypoints[[matches[matches >= 0]]])
-p2 = np.squeeze(keypoints_2[[matches[matches >= 0]]])
+# Plot keypoints matches
+plt.clf()
+plt.close()
+plt.imshow(img_2, cmap='gray')
+plt.plot(keypoints_2[1, :], keypoints_2[0, :], 'rx', linewidth=2)
+plotMatches(matches, keypoints_2, keypoints)
+plt.tight_layout()
+plt.axis('off')
+plt.show()
+
+
+matched_keypoints1 = keypoints[:, matches>=0].T
+matched_keypoints2 = keypoints_2[:, matches>=0].T
 
 rng = np.random.default_rng(random_seed)
 
 # Apply Ransac to Obtain the Essential Matrix and inliers
-model, inliers = ransac((p1, p2), FundamentalMatrixTransform, min_samples=8,
+model, inliers = ransac((matched_keypoints1, matched_keypoints2), FundamentalMatrixTransform, min_samples=8,
                         residual_threshold=1, max_trials=5000,
                         random_state=rng)
 
-inliers = inliers.astype(int)
-inlier_keypoints_1 = np.squeeze(p1[[inliers[inliers > 0]]])
-inlier_keypoints_2 = np.squeeze(p2[[inliers[inliers > 0]]])
+p1 = np.r_[matched_keypoints1[inliers][None,:,1], matched_keypoints1[inliers][None,:,0], np.ones((1, matched_keypoints1[inliers].shape[0]))]
+p2 = np.r_[matched_keypoints2[inliers][None,:,1], matched_keypoints2[inliers][None,:,0], np.ones((1, matched_keypoints2[inliers].shape[0]))]
 
 F = model.params
 
-E = np.linalg.inv(K).T @ F @ np.linalg.inv(K)
+E = K.T @ F @ K
 
 Rots, u3 = decomposeEssentialMatrix(E)
 
-R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, extendPoint(inlier_keypoints_1), extendPoint(inlier_keypoints_2), K, K)
+R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, p1, p2, K, K)
 
 M1 = K @ np.eye(3, 4)
 M2 = K @ np.c_[R_C2_W, T_C2_W]
-P = linearTriangulation(extendPoint(inlier_keypoints_1), extendPoint(inlier_keypoints_2), M1, M2)
+P = linearTriangulation(p1, p2, M1, M2)
 
+# Visualize the 3-D scene
 fig = plt.figure()
 ax = fig.add_subplot(1, 3, 1, projection='3d')
 ax.scatter(P[0, :], P[1, :], P[2, :], marker='o')
