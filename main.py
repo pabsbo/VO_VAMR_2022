@@ -13,6 +13,9 @@ from Pose_Estimation.linear_triangulation import linearTriangulation
 from Pose_Estimation.draw_camera import drawCamera
 from Pose_Estimation.getMatches import getMatches, pointsToUV, getMatches2, extendPoint
 from Pose_Estimation.plotMatches import plotMatches
+from Pose_Estimation.estimate_essential_matrix import estimateEssentialMatrix
+
+
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
 
@@ -63,15 +66,17 @@ plt.tight_layout()
 plt.axis('off')
 plt.show()
 
+query_indices = np.nonzero(matches >= 0)[0]
+match_indices = matches[query_indices]
 
-matched_keypoints1 = keypoints[:, matches>=0].T
-matched_keypoints2 = keypoints_2[:, matches>=0].T
+matched_keypoints1 = keypoints[:, match_indices].T
+matched_keypoints2 = keypoints_2[:, query_indices].T
 
 rng = np.random.default_rng(random_seed)
 
 # Apply Ransac to Obtain the Essential Matrix and inliers
 model, inliers = ransac((matched_keypoints1, matched_keypoints2), FundamentalMatrixTransform, min_samples=8,
-                        residual_threshold=1, max_trials=5000,
+                        residual_threshold=0.1, max_trials=5000,
                         random_state=rng)
 
 p1 = np.r_[matched_keypoints1[inliers][None,:,1], matched_keypoints1[inliers][None,:,0], np.ones((1, matched_keypoints1[inliers].shape[0]))]
@@ -80,6 +85,8 @@ p2 = np.r_[matched_keypoints2[inliers][None,:,1], matched_keypoints2[inliers][No
 F = model.params
 
 E = K.T @ F @ K
+
+# E = estimateEssentialMatrix(p1, p2, K, K)
 
 Rots, u3 = decomposeEssentialMatrix(E)
 
