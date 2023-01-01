@@ -2,22 +2,24 @@ import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
-from Key_Points.harris import harris
-from Key_Points.selectKeypoints import selectKeypoints
-from Key_Points.describeKeypoints import describeKeypoints
-from Key_Points.matchDescriptors import matchDescriptors
-from Pose_Estimation.decompose_essential_matrix import decomposeEssentialMatrix
-from Pose_Estimation.disambiguate_relative_pose import disambiguateRelativePose
-from Pose_Estimation.linear_triangulation import linearTriangulation
-from Pose_Estimation.draw_camera import drawCamera
-from Pose_Estimation.getMatches import getMatches, pointsToUV, getMatches2, extendPoint
-from Pose_Estimation.plotMatches import plotMatches
-from Pose_Estimation.estimate_essential_matrix import estimateEssentialMatrix
-
+from Ex3_harris.harris import harris
+from Ex3_harris.selectKeypoints import selectKeypoints
+from Ex3_harris.describeKeypoints import describeKeypoints
+from Ex3_harris.matchDescriptors import matchDescriptors
+from Ex3_harris.plotMatches import plotMatches
+from Ex6_triangulation.decompose_essential_matrix import decomposeEssentialMatrix
+from Ex6_triangulation.disambiguate_relative_pose import disambiguateRelativePose
+from Ex6_triangulation.linear_triangulation import linearTriangulation
+from Ex6_triangulation.draw_camera import drawCamera
+from Ex6_triangulation.estimate_essential_matrix import estimateEssentialMatrix
+from Ex7_ransac.ransacFundamentalMatrix import ransacFundamentalMatrix
 
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
+
+from initialization import initialization
 
 matplotlib.use('TkAgg')
 
@@ -35,89 +37,46 @@ min_disp = 5
 max_disp = 50
 
 random_seed = 9
+dataset = 'KITTI' # 'KITTI', 'PARKING'
+if dataset == 'KITTI':
+    img_path = '../data/kitti/05/image_0'
+    K = np.array([[7.188560000000e+02, 0, 6.071928000000e+02],
+                  [0, 7.188560000000e+02, 1.852157000000e+02],
+                  [0, 0, 1]])
 
-K = np.array([[7.188560000000e+02, 0, 6.071928000000e+02],
-              [0, 7.188560000000e+02, 1.852157000000e+02],
-              [0, 0, 1]])
+elif dataset == 'PARKING':
+    img_path = '../data/parking/images'
+    K = np.array([[331.37, 0, 320],
+                  [0, 369.568, 240],
+                  [0, 0, 1]])
 
-# First and third frame of Kitti dataset
-img = cv2.imread('../data/kitti/05/image_0/000000.png', cv2.IMREAD_GRAYSCALE)
-img_2 = cv2.imread('../data/kitti/05/image_0/000002.png', cv2.IMREAD_GRAYSCALE)
+p, P, R_C_W, T_C_W = initialization(img_path) # p: keypoints in frame 0, P: landmarks, R_C_W: camera rotation matrix, T_C_W: camera position
 
-# Select keypoints and descriptors of image 1 and 2
-harris_scores = harris(img, corner_patch_size, harris_kappa)
-keypoints = selectKeypoints(harris_scores, num_keypoints, nonmaximum_supression_radius) # [0,:]: row(y-loc in graph), [1,:] : column (x-loc in graph)
-descriptors = describeKeypoints(img, keypoints, descriptor_radius)
 
-harris_scores_2 = harris(img_2, corner_patch_size, harris_kappa)
-keypoints_2 = selectKeypoints(harris_scores_2, num_keypoints, nonmaximum_supression_radius)
-descriptors_2 = describeKeypoints(img_2, keypoints_2, descriptor_radius)
 
-# Match descriptors between first two images
-matches = matchDescriptors(descriptors_2, descriptors, match_lambda)
 
-# Plot keypoints matches
-plt.clf()
-plt.close()
-plt.imshow(img_2, cmap='gray')
-plt.plot(keypoints_2[1, :], keypoints_2[0, :], 'rx', linewidth=2)
-plotMatches(matches, keypoints_2, keypoints)
-plt.tight_layout()
-plt.axis('off')
-plt.show()
 
-query_indices = np.nonzero(matches >= 0)[0]
-match_indices = matches[query_indices]
 
-matched_keypoints1 = keypoints[:, match_indices].T
-matched_keypoints2 = keypoints_2[:, query_indices].T
 
-rng = np.random.default_rng(random_seed)
+# Part 5 - Match descriptors between all images
+prev_desc = None
+prev_kp = None
+num_frames = len(os.listdir(img_path))
+for i in range(num_frames):
+    plt.clf()
+    img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
+    scores = harris(img, corner_patch_size, harris_kappa)
+    kp = selectKeypoints(scores, num_keypoints, nonmaximum_supression_radius)
+    desc = describeKeypoints(img, kp, descriptor_radius)
 
-# Apply Ransac to Obtain the Essential Matrix and inliers
-model, inliers = ransac((matched_keypoints1, matched_keypoints2), FundamentalMatrixTransform, min_samples=8,
-                        residual_threshold=0.1, max_trials=5000,
-                        random_state=rng)
+    plt.imshow(img, cmap='gray')
+    plt.plot(kp[1, :], kp[0, :], 'rx', linewidth=2)
+    plt.axis('off')
 
-p1 = np.r_[matched_keypoints1[inliers][None,:,1], matched_keypoints1[inliers][None,:,0], np.ones((1, matched_keypoints1[inliers].shape[0]))]
-p2 = np.r_[matched_keypoints2[inliers][None,:,1], matched_keypoints2[inliers][None,:,0], np.ones((1, matched_keypoints2[inliers].shape[0]))]
+    if prev_desc is not None:
+        matches = matchDescriptors(desc, prev_desc, match_lambda)
+        plotMatches(matches, kp, prev_kp)
+    prev_kp = kp
+    prev_desc = desc
 
-F = model.params
-
-E = K.T @ F @ K
-
-# E = estimateEssentialMatrix(p1, p2, K, K)
-
-Rots, u3 = decomposeEssentialMatrix(E)
-
-R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, p1, p2, K, K)
-
-M1 = K @ np.eye(3, 4)
-M2 = K @ np.c_[R_C2_W, T_C2_W]
-P = linearTriangulation(p1, p2, M1, M2)
-
-# Visualize the 3-D scene
-fig = plt.figure()
-ax = fig.add_subplot(1, 3, 1, projection='3d')
-ax.scatter(P[0, :], P[1, :], P[2, :], marker='o')
-
-# Display camera pose
-drawCamera(ax, np.zeros((3,)), np.eye(3), length_scale=2)
-ax.text(-0.1, -0.1, -0.1, "Cam 1")
-
-center_cam2_W = -R_C2_W.T @ T_C2_W
-drawCamera(ax, center_cam2_W, R_C2_W.T, length_scale=2)
-ax.text(center_cam2_W[0] - 0.1, center_cam2_W[1] - 0.1, center_cam2_W[2] - 0.1, 'Cam 2')
-
-# Display matched points
-ax = fig.add_subplot(1, 3, 2)
-ax.imshow(img)
-ax.scatter(p1[0, :], p1[1, :], color='y', marker='s')
-ax.set_title("Image 1")
-
-ax = fig.add_subplot(1, 3, 3)
-ax.imshow(img_2)
-ax.scatter(p2[0, :], p2[1, :], color='y', marker='s')
-ax.set_title("Image 2")
-
-plt.show()
+    plt.pause(0.1)
