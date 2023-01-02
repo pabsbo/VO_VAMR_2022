@@ -19,7 +19,7 @@ from Ex7_ransac.ransacFundamentalMatrix import ransacFundamentalMatrix
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
 
-def initialization(img_path):
+def initialization(dataset): # dataset = 'KITTI', 'PARKING'
     # Parameters used in previous exercises
     corner_patch_size = 9
     harris_kappa = 0.08
@@ -30,10 +30,9 @@ def initialization(img_path):
 
     random_seed = 9
 
-    dataset = 'KITTI' # 'KITTI', 'PARKING'
-
     if dataset == 'KITTI':
         # KITTI
+        img_path = '../data/kitti/05/image_0'
         K = np.array([[7.188560000000e+02, 0, 6.071928000000e+02],
                     [0, 7.188560000000e+02, 1.852157000000e+02],
                     [0, 0, 1]])
@@ -44,6 +43,7 @@ def initialization(img_path):
 
     elif dataset == 'PARKING':
         # Parking
+        img_path = '../data/parking/images'
         K = np.array([[331.37, 0, 320],
                     [0, 369.568, 240],
                     [0, 0, 1]])
@@ -90,4 +90,12 @@ def initialization(img_path):
     M2 = K @ np.c_[R_C2_W, T_C2_W]
     P = linearTriangulation(p1, p2, M1, M2)
 
-    return p1, P, R_C2_W, T_C2_W  
+    
+    return p1[:2,:], P[:3,:], R_C2_W, T_C2_W, img  # p1: keypoints in frame 0, P: 3D landmarks, R_C2_W: camera rotation matrix, T_C2_W: camera position, img: the first frame
+
+""" Questions
+1. Why do we return R_C2_W? Initial camera pose is just (0, 0, 1), isn't it ?
+On the document, BOOTSTRAP the initial camera poses and landmarks,,,?
+
+
+"""

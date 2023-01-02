@@ -80,7 +80,7 @@ def ransacLocalization(matched_query_keypoints, corresponding_landmarks, K):
                 if alternative_is_inlier.sum() > is_inlier.sum():
                     is_inlier = alternative_is_inlier
 
-        min_inlier_count = 30 if tweaked_for_more else 6
+        min_inlier_count = 0 if tweaked_for_more else 6 # 30
 
         if is_inlier.sum() > max_num_inliers and is_inlier.sum() >= min_inlier_count:
             max_num_inliers = is_inlier.sum()

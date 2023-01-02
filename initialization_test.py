@@ -50,8 +50,8 @@ if DATASET == 'KITTI':
                   [0, 0, 1]])
 
     # First and third frame of Kitti dataset
-    img = cv2.imread('../data/kitti/05/image_0/000020.png', cv2.IMREAD_GRAYSCALE)
-    img_2 = cv2.imread('../data/kitti/05/image_0/000022.png', cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('../data/kitti/05/image_0/000000.png', cv2.IMREAD_GRAYSCALE)
+    img_2 = cv2.imread('../data/kitti/05/image_0/000002.png', cv2.IMREAD_GRAYSCALE)
 
 elif DATASET == 'PARKING':
     # Parking
@@ -74,12 +74,12 @@ harris_scores = harris(img, corner_patch_size, harris_kappa)
 keypoints = selectKeypoints(harris_scores, num_keypoints, nonmaximum_supression_radius) # [0,:]: row(y-loc in graph), [1,:] : column (x-loc in graph)
 descriptors = describeKeypoints(img, keypoints, descriptor_radius)
 
-# dkp = np.zeros_like(keypoints)
-# keep = np.ones((keypoints.shape[1],)).astype('bool')
-# for j in range(keypoints.shape[1]):
-#     kptd, k = trackKLTRobustly(img, img_2, keypoints[:,j].T, r_T, n_iter, threshold)
-#     dkp[:, j] = kptd
-#     keep[j] = k
+dkp = np.zeros_like(keypoints)
+keep = np.ones((keypoints.shape[1],)).astype('bool')
+for j in range(keypoints.shape[1]):
+    kptd, k = trackKLTRobustly(img, img_2, np.flipud(keypoints[:,j].T), r_T, n_iter, threshold)
+    dkp[:, j] = kptd
+    keep[j] = k
 
 
 harris_scores_2 = harris(img_2, corner_patch_size, harris_kappa)
@@ -107,7 +107,7 @@ matched_keypoints2 = keypoints_2[:, query_indices]
 
 # matched_keypoints1 = keypoints[:, keep]
 # matched_keypoints2 = keypoints + dkp
-# matched_keypoints2 = keypoints[:, keep]
+# matched_keypoints2 = matched_keypoints2[:, keep]
 
 rng = np.random.default_rng(random_seed)
 

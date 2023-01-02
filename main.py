@@ -15,11 +15,15 @@ from Ex6_triangulation.linear_triangulation import linearTriangulation
 from Ex6_triangulation.draw_camera import drawCamera
 from Ex6_triangulation.estimate_essential_matrix import estimateEssentialMatrix
 from Ex7_ransac.ransacFundamentalMatrix import ransacFundamentalMatrix
+from Ex8_KLT.track_klt_robustly import trackKLTRobustly
 
 from skimage.measure import ransac
 from skimage.transform import FundamentalMatrixTransform
 
+from state import State
 from initialization import initialization
+from continuous_operation import processFrame
+
 
 matplotlib.use('TkAgg')
 
@@ -37,6 +41,7 @@ min_disp = 5
 max_disp = 50
 
 random_seed = 9
+
 dataset = 'KITTI' # 'KITTI', 'PARKING'
 if dataset == 'KITTI':
     img_path = '../data/kitti/05/image_0'
@@ -50,33 +55,55 @@ elif dataset == 'PARKING':
                   [0, 369.568, 240],
                   [0, 0, 1]])
 
-p, P, R_C_W, T_C_W = initialization(img_path) # p: keypoints in frame 0, P: landmarks, R_C_W: camera rotation matrix, T_C_W: camera position
+keypoints, landmarks, R_C_W, T_C_W, prev_img = initialization(dataset) 
 
+prev_state = State(keypoints, landmarks)
+curr_state = State()
 
-
-
-
-
-
-# Part 5 - Match descriptors between all images
 prev_desc = None
-prev_kp = None
+prev_kp = keypoints # Keypoints in the first frame
 num_frames = len(os.listdir(img_path))
-for i in range(num_frames):
-    plt.clf()
-    img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
-    scores = harris(img, corner_patch_size, harris_kappa)
-    kp = selectKeypoints(scores, num_keypoints, nonmaximum_supression_radius)
-    desc = describeKeypoints(img, kp, descriptor_radius)
 
-    plt.imshow(img, cmap='gray')
-    plt.plot(kp[1, :], kp[0, :], 'rx', linewidth=2)
-    plt.axis('off')
+fig = plt.figure()
 
-    if prev_desc is not None:
-        matches = matchDescriptors(desc, prev_desc, match_lambda)
-        plotMatches(matches, kp, prev_kp)
-    prev_kp = kp
-    prev_desc = desc
+for i in range(1, num_frames):
+    # plt.clf()
+    # img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
+    # scores = harris(img, corner_patch_size, harris_kappa)
+    # kp = selectKeypoints(scores, num_keypoints, nonmaximum_supression_radius)
+    # desc = describeKeypoints(img, kp, descriptor_radius)
+
+    # plt.imshow(img, cmap='gray')
+    # plt.plot(kp[1, :], kp[0, :], 'rx', linewidth=2)
+    # plt.axis('off')
+
+    # if prev_desc is not None:
+    #     matches = matchDescriptors(desc, prev_desc, match_lambda)
+    #     plotMatches(matches, kp, prev_kp)
+    # prev_kp = kp
+    # prev_desc = desc
+
+    # plt.pause(0.1)
+
+    ax = fig.add_subplot(2, 1, 1)
+
+    curr_img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
+    curr_state, R_C_P, T_C_P, inlier_mask = processFrame(curr_img, prev_img, prev_state, K)
+
+    # Visualize keypoints / their matching / 3D landmarks / Camera movements etc
+    ax.imshow(curr_img, cmap='gray')
+    ax.plot(prev_state.keypoints[0, :], prev_state.keypoints[1, :], 'bx', linewidth=2)
+    ax.plot(curr_state.keypoints[0, :], curr_state.keypoints[1, :], 'rx', linewidth=2)
+    ax.axis('off')
+
+    ax = fig.add_subplot(2, 1, 2, projection='3d')
+    ax.scatter(curr_state.landmarks[:, 0], curr_state.landmarks[:, 1], curr_state.landmarks[:, 2], s=1)
+    drawCamera(ax, -np.matmul(R_C_P.T, T_C_P), R_C_W.T, length_scale=10, head_size=10, set_ax_limits=True)
+    print('Frame {} localized with {} inliers!'.format(i, inlier_mask.sum()))
+
+    prev_img = curr_img
+    prev_state = curr_state
 
     plt.pause(0.1)
+
+
