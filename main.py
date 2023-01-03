@@ -1,8 +1,10 @@
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import numpy as np
 import os
+from collections import deque
 
 from Ex3_harris.harris import harris
 from Ex3_harris.selectKeypoints import selectKeypoints
@@ -58,48 +60,65 @@ elif dataset == 'PARKING':
 keypoints, landmarks, R_C_W, T_C_W, prev_img = initialization(dataset) 
 
 prev_state = State(keypoints, landmarks)
-curr_state = State()
 
-prev_desc = None
-prev_kp = keypoints # Keypoints in the first frame
 num_frames = len(os.listdir(img_path))
 
-fig = plt.figure()
+num_tracked_landmarks = deque(maxlen=20)
+for i in range(num_tracked_landmarks.maxlen):
+    num_tracked_landmarks.append(0)
+
+full_trajectory_x = deque()
+full_trajectory_y = deque()
+
+fig = plt.figure(figsize=(12,6))
+gs=GridSpec(2,4)
 
 for i in range(1, num_frames):
-    # plt.clf()
-    # img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
-    # scores = harris(img, corner_patch_size, harris_kappa)
-    # kp = selectKeypoints(scores, num_keypoints, nonmaximum_supression_radius)
-    # desc = describeKeypoints(img, kp, descriptor_radius)
-
-    # plt.imshow(img, cmap='gray')
-    # plt.plot(kp[1, :], kp[0, :], 'rx', linewidth=2)
-    # plt.axis('off')
-
-    # if prev_desc is not None:
-    #     matches = matchDescriptors(desc, prev_desc, match_lambda)
-    #     plotMatches(matches, kp, prev_kp)
-    # prev_kp = kp
-    # prev_desc = desc
-
-    # plt.pause(0.1)
-
-    ax = fig.add_subplot(2, 1, 1)
+    fig.clear()
 
     curr_img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
     curr_state, R_C_P, T_C_P, inlier_mask = processFrame(curr_img, prev_img, prev_state, K)
 
-    # Visualize keypoints / their matching / 3D landmarks / Camera movements etc
+    # Visualize current image with keypoints / their matching
+    ax = fig.add_subplot(gs[0,:2])
     ax.imshow(curr_img, cmap='gray')
     ax.plot(prev_state.keypoints[0, :], prev_state.keypoints[1, :], 'bx', linewidth=2)
     ax.plot(curr_state.keypoints[0, :], curr_state.keypoints[1, :], 'rx', linewidth=2)
+    # ax.plot(curr_state.candidate_keypoints[0, :], curr_state.candidate_keypoints[1, :], 'gx', linewidth=2)
+    ax.set_title(f'Current Image, Frame # {i}')
     ax.axis('off')
 
-    ax = fig.add_subplot(2, 1, 2, projection='3d')
-    ax.scatter(curr_state.landmarks[:, 0], curr_state.landmarks[:, 1], curr_state.landmarks[:, 2], s=1)
-    drawCamera(ax, -np.matmul(R_C_P.T, T_C_P), R_C_W.T, length_scale=10, head_size=10, set_ax_limits=True)
-    print('Frame {} localized with {} inliers!'.format(i, inlier_mask.sum()))
+    # Visualize # tracked landmarks over last 20 frames
+    ax = fig.add_subplot(gs[1,0])
+    num_tracked_landmarks.append(curr_state.landmarks.shape[1])
+    ax.plot(np.flip(-np.arange(20)), np.array(num_tracked_landmarks))
+    ax.set_title('# tracked landmarks over last 20 frames')
+
+    # Visualize Full Trajectory
+    ax = fig.add_subplot(gs[1,1])
+    camera_position = -np.matmul(R_C_P.T, T_C_P) # TODO: This might be incorrect. Should I multiply with the previous rot.matrix?
+    full_trajectory_x.append(camera_position[0])
+    full_trajectory_y.append(camera_position[1])
+    ax.plot(np.array(full_trajectory_x), np.array(full_trajectory_y), color='r')
+    ax.set_title('Full Trajectory')
+
+    # Visualize Trajectory of last 20 frames and landmarks
+    ax = fig.add_subplot(gs[:,2:])
+    # ax = fig.add_subplot(gs[0,2])
+    ax.plot(np.arange(2), np.arange(2))
+    ax.scatter(curr_state.landmarks[0,:], curr_state.landmarks[1,:], color='k', s=5)
+    ax.set_title('Trajectory of last 20 frames and landmarks')
+
+
+    # Visualize 3D landmarks / Camera pose (debug)
+    # ax = fig.add_subplot(gs[0,3], projection='3d')
+    # ax.set_xlim3d(-1, 5)
+    # ax.set_ylim3d(-1, 5)
+    # ax.set_zlim3d(-1, 5)
+    # ax.scatter(curr_state.landmarks[:, 0], curr_state.landmarks[:, 1], curr_state.landmarks[:, 2], s=1)
+    # drawCamera(ax, -np.matmul(R_C_P.T, T_C_P), R_C_P.T, length_scale=10, head_size=10, set_ax_limits=True)
+    # ax.set_title('3D Landmarks and Camera Pose')
+    # print('Frame {} localized with {} inliers!'.format(i, inlier_mask.sum()))
 
     prev_img = curr_img
     prev_state = curr_state

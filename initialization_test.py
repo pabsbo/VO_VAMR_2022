@@ -13,7 +13,9 @@ from Ex6_triangulation.disambiguate_relative_pose import disambiguateRelativePos
 from Ex6_triangulation.linear_triangulation import linearTriangulation
 from Ex6_triangulation.draw_camera import drawCamera
 from Ex6_triangulation.estimate_essential_matrix import estimateEssentialMatrix
+from Ex6_triangulation.normalise_2D_pts import normalise2DPts
 from Ex7_ransac.ransacFundamentalMatrix import ransacFundamentalMatrix
+from Ex7_ransac.ransacLocalization import ransacLocalization
 from Ex8_KLT.track_klt_robustly import trackKLTRobustly
 
 from skimage.measure import ransac
@@ -109,10 +111,15 @@ matched_keypoints2 = keypoints_2[:, query_indices]
 # matched_keypoints2 = keypoints + dkp
 # matched_keypoints2 = matched_keypoints2[:, keep]
 
+# np.r_[matched_keypoints1[1,:], matched_keypoints1[0,inliers], np.ones((1, inliers.sum()))]
+
+
+
 rng = np.random.default_rng(random_seed)
 
 ## Apply Ransac to Obtain the Essential Matrix and inliers // skimage library
 model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), FundamentalMatrixTransform, min_samples=8,
+# model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), EssentialMatrixTransform, min_samples=8,
                         residual_threshold=1, max_trials=5000,
                         random_state=rng)
 
@@ -120,6 +127,9 @@ model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), Fundamenta
 
 p1 = np.r_[matched_keypoints1[None,1,inliers], matched_keypoints1[None,0,inliers], np.ones((1, inliers.sum()))]
 p2 = np.r_[matched_keypoints2[None,1,inliers], matched_keypoints2[None,0,inliers], np.ones((1, inliers.sum()))]
+
+# p1, _ = normalise2DPts(p1)
+# p2, _ = normalise2DPts(p2)
 
 # # Load outlier-free point correspondences
 # p1 = np.loadtxt('../data/data/matches0001.txt')
@@ -130,21 +140,27 @@ p2 = np.r_[matched_keypoints2[None,1,inliers], matched_keypoints2[None,0,inliers
 
 F = model.params
 
+# F = T2.T @ F @ T1
+
 # E = np.linalg.inv(K).T @ F @ np.linalg.inv(K)
 E = K.T @ F @ K
 
-E = estimateEssentialMatrix(p1, p2, K, K)
+# E = estimateEssentialMatrix(p1, p2, K, K)
 # F = np.linalg.inv(K).T @ E @ np.linalg.inv(K)
 
-Rots, u3 = decomposeEssentialMatrix(F)
+Rots, u3 = decomposeEssentialMatrix(E)
 
 R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, p1, p2, K, K)
 
 M1 = K @ np.eye(3, 4)
 M2 = K @ np.c_[R_C2_W, T_C2_W]
 P = linearTriangulation(p1, p2, M1, M2)
-# mask = P[2,:] >= 0
-# P = P[:, mask]
+
+# R_C_P, T_C_P, inlier_mask, _, _ = ransacLocalization(np.flipud(p1[:2,:]), P[:3,:].T, K)
+# p1 = p1[:, inlier_mask]
+# mask = (-5 < P[2,:]) & (P[2,:] < 5)
+# P = P[:,mask]
+
 
 # Visualize the 3-D scene
 fig = plt.figure()

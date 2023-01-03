@@ -81,15 +81,15 @@ def initialization(dataset): # dataset = 'KITTI', 'PARKING'
     p2 = np.r_[matched_keypoints2[None,1,inliers], matched_keypoints2[None,0,inliers], np.ones((1, inliers.sum()))]
 
     F = model.params
+    E = K.T @ F @ K
 
-    Rots, u3 = decomposeEssentialMatrix(F)
+    Rots, u3 = decomposeEssentialMatrix(E)
 
     R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, p1, p2, K, K)
 
     M1 = K @ np.eye(3, 4)
     M2 = K @ np.c_[R_C2_W, T_C2_W]
     P = linearTriangulation(p1, p2, M1, M2)
-
     
     return p1[:2,:], P[:3,:], R_C2_W, T_C2_W, img  # p1: keypoints in frame 0, P: 3D landmarks, R_C2_W: camera rotation matrix, T_C2_W: camera position, img: the first frame
 
