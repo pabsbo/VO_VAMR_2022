@@ -44,7 +44,7 @@ max_disp = 50
 
 random_seed = 9
 
-dataset = 'KITTI' # 'KITTI', 'PARKING'
+dataset = 'PARKING' # 'KITTI', 'PARKING'
 if dataset == 'KITTI':
     img_path = '../data/kitti/05/image_0'
     K = np.array([[7.188560000000e+02, 0, 6.071928000000e+02],
@@ -75,8 +75,11 @@ gs=GridSpec(2,4)
 
 for i in range(1, num_frames):
     fig.clear()
+    if dataset == 'KITTI':
+        curr_img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
+    elif dataset == 'PARKING':
+        curr_img = cv2.imread(f'{img_path}' + '/img_{0:05d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
 
-    curr_img = cv2.imread(f'{img_path}' + '/{0:06d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
     curr_state, R_C_P, T_C_P, inlier_mask = processFrame(curr_img, prev_img, prev_state, K)
 
     # Visualize current image with keypoints / their matching

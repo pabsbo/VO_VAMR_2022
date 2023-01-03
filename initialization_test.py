@@ -43,13 +43,14 @@ r_T = 15
 n_iter = 50
 threshold = 0.1
 
-DATASET = 'KITTI' # 'KITTI', 'PARKING'
+DATASET = 'PARKING' # 'KITTI', 'PARKING'
 
 if DATASET == 'KITTI':
     # KITTI
     K = np.array([[7.188560000000e+02, 0, 6.071928000000e+02],
                   [0, 7.188560000000e+02, 1.852157000000e+02],
                   [0, 0, 1]])
+    K[0:2, :] /= 2
 
     # First and third frame of Kitti dataset
     img = cv2.imread('../data/kitti/05/image_0/000000.png', cv2.IMREAD_GRAYSCALE)
@@ -62,8 +63,8 @@ elif DATASET == 'PARKING':
                   [0, 0, 1]])
 
     # First and third frame of Kitti dataset
-    img = cv2.imread('../data/parking/images/img_00000.png', cv2.IMREAD_GRAYSCALE)
-    img_2 = cv2.imread('../data/parking/images/img_00002.png', cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('../data/parking/images/img_00001.png', cv2.IMREAD_GRAYSCALE)
+    img_2 = cv2.imread('../data/parking/images/img_00003.png', cv2.IMREAD_GRAYSCALE)
 
 # img = cv2.imread('../data/data/0001.jpg', cv2.IMREAD_GRAYSCALE)
 # img_2 = cv2.imread('../data/data/0002.jpg', cv2.IMREAD_GRAYSCALE)
@@ -108,18 +109,13 @@ matched_keypoints1 = keypoints[:, database_indices]
 matched_keypoints2 = keypoints_2[:, query_indices]
 
 # matched_keypoints1 = keypoints[:, keep]
-# matched_keypoints2 = keypoints + dkp
+# matched_keypoints2 = keypoints + np.flipud(dkp)
 # matched_keypoints2 = matched_keypoints2[:, keep]
-
-# np.r_[matched_keypoints1[1,:], matched_keypoints1[0,inliers], np.ones((1, inliers.sum()))]
-
-
 
 rng = np.random.default_rng(random_seed)
 
 ## Apply Ransac to Obtain the Essential Matrix and inliers // skimage library
-model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), FundamentalMatrixTransform, min_samples=8,
-# model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), EssentialMatrixTransform, min_samples=8,
+model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), FundamentalMatrixTransform, min_samples=8, # EssentialMatrixTransform
                         residual_threshold=1, max_trials=5000,
                         random_state=rng)
 
@@ -127,9 +123,6 @@ model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), Fundamenta
 
 p1 = np.r_[matched_keypoints1[None,1,inliers], matched_keypoints1[None,0,inliers], np.ones((1, inliers.sum()))]
 p2 = np.r_[matched_keypoints2[None,1,inliers], matched_keypoints2[None,0,inliers], np.ones((1, inliers.sum()))]
-
-# p1, _ = normalise2DPts(p1)
-# p2, _ = normalise2DPts(p2)
 
 # # Load outlier-free point correspondences
 # p1 = np.loadtxt('../data/data/matches0001.txt')
@@ -145,7 +138,7 @@ F = model.params
 # E = np.linalg.inv(K).T @ F @ np.linalg.inv(K)
 E = K.T @ F @ K
 
-# E = estimateEssentialMatrix(p1, p2, K, K)
+E = estimateEssentialMatrix(p1, p2, K, K)
 # F = np.linalg.inv(K).T @ E @ np.linalg.inv(K)
 
 Rots, u3 = decomposeEssentialMatrix(E)
@@ -155,9 +148,11 @@ R_C2_W, T_C2_W = disambiguateRelativePose(Rots, u3, p1, p2, K, K)
 M1 = K @ np.eye(3, 4)
 M2 = K @ np.c_[R_C2_W, T_C2_W]
 P = linearTriangulation(p1, p2, M1, M2)
-
+# P = P / P.max()
 # R_C_P, T_C_P, inlier_mask, _, _ = ransacLocalization(np.flipud(p1[:2,:]), P[:3,:].T, K)
 # p1 = p1[:, inlier_mask]
+# p2 = p2[:, inlier_mask]
+# P = P[:, inlier_mask]
 # mask = (-5 < P[2,:]) & (P[2,:] < 5)
 # P = P[:,mask]
 
@@ -173,6 +168,7 @@ ax.text(-0.1, -0.1, -0.1, "Cam 1")
 
 center_cam2_W = -R_C2_W.T @ T_C2_W
 drawCamera(ax, center_cam2_W, R_C2_W.T, length_scale=2)
+print("Camera2 Position: ", center_cam2_W)
 ax.text(center_cam2_W[0] - 0.1, center_cam2_W[1] - 0.1, center_cam2_W[2] - 0.1, 'Cam 2')
 
 # Display matched points

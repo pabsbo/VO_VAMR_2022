@@ -49,7 +49,7 @@ def initialization(dataset): # dataset = 'KITTI', 'PARKING'
                     [0, 0, 1]])
 
         # First and third frame of Kitti dataset
-        img = cv2.imread(f'.{img_path}/img_00000.png', cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(f'{img_path}/img_00000.png', cv2.IMREAD_GRAYSCALE)
         img_2 = cv2.imread(f'{img_path}/img_00002.png', cv2.IMREAD_GRAYSCALE)
 
     # Select keypoints and descriptors of image 1 and 2
@@ -80,8 +80,9 @@ def initialization(dataset): # dataset = 'KITTI', 'PARKING'
     p1 = np.r_[matched_keypoints1[None,1,inliers], matched_keypoints1[None,0,inliers], np.ones((1, inliers.sum()))]
     p2 = np.r_[matched_keypoints2[None,1,inliers], matched_keypoints2[None,0,inliers], np.ones((1, inliers.sum()))]
 
-    F = model.params
-    E = K.T @ F @ K
+    # F = model.params
+    # E = K.T @ F @ K
+    E = estimateEssentialMatrix(p1, p2, K, K)
 
     Rots, u3 = decomposeEssentialMatrix(E)
 
