@@ -68,7 +68,7 @@ for i in range(num_tracked_landmarks.maxlen):
     num_tracked_landmarks.append(0)
 
 full_trajectory_x = deque()
-full_trajectory_y = deque()
+full_trajectory_z = deque()
 
 fig = plt.figure(figsize=(12,6))
 gs=GridSpec(2,4)
@@ -80,7 +80,7 @@ for i in range(1, num_frames):
     elif dataset == 'PARKING':
         curr_img = cv2.imread(f'{img_path}' + '/img_{0:05d}.png'.format(i), cv2.IMREAD_GRAYSCALE)
 
-    curr_state, R_C_P, T_C_P, inlier_mask = processFrame(curr_img, prev_img, prev_state, K)
+    curr_state, R_C_W, T_C_W, inlier_mask = processFrame(curr_img, prev_img, prev_state, K)
 
     # Visualize current image with keypoints / their matching
     ax = fig.add_subplot(gs[0,:2])
@@ -99,10 +99,10 @@ for i in range(1, num_frames):
 
     # Visualize Full Trajectory
     ax = fig.add_subplot(gs[1,1])
-    camera_position = -np.matmul(R_C_P.T, T_C_P) # TODO: This might be incorrect. Should I multiply with the previous rot.matrix?
+    camera_position = -np.matmul(R_C_W.T, T_C_W) # TODO: This might be incorrect. Should I multiply with the previous rot.matrix?
     full_trajectory_x.append(camera_position[0])
-    full_trajectory_y.append(camera_position[1])
-    ax.plot(np.array(full_trajectory_x), np.array(full_trajectory_y), color='r')
+    full_trajectory_z.append(camera_position[2])
+    ax.plot(np.array(full_trajectory_x), np.array(full_trajectory_z), color='r')
     ax.set_title('Full Trajectory')
 
     # Visualize Trajectory of last 20 frames and landmarks
@@ -119,7 +119,7 @@ for i in range(1, num_frames):
     # ax.set_ylim3d(-1, 5)
     # ax.set_zlim3d(-1, 5)
     # ax.scatter(curr_state.landmarks[:, 0], curr_state.landmarks[:, 1], curr_state.landmarks[:, 2], s=1)
-    # drawCamera(ax, -np.matmul(R_C_P.T, T_C_P), R_C_P.T, length_scale=10, head_size=10, set_ax_limits=True)
+    # drawCamera(ax, -np.matmul(R_C_W.T, T_C_W), R_C_W.T, length_scale=10, head_size=10, set_ax_limits=True)
     # ax.set_title('3D Landmarks and Camera Pose')
     # print('Frame {} localized with {} inliers!'.format(i, inlier_mask.sum()))
 
