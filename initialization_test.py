@@ -63,8 +63,8 @@ elif DATASET == 'PARKING':
                   [0, 0, 1]])
 
     # First and third frame of Kitti dataset
-    img = cv2.imread('../data/parking/images/img_00001.png', cv2.IMREAD_GRAYSCALE)
-    img_2 = cv2.imread('../data/parking/images/img_00003.png', cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread('../data/parking/images/img_00041.png', cv2.IMREAD_GRAYSCALE)
+    img_2 = cv2.imread('../data/parking/images/img_00043.png', cv2.IMREAD_GRAYSCALE)
 
 # img = cv2.imread('../data/data/0001.jpg', cv2.IMREAD_GRAYSCALE)
 # img_2 = cv2.imread('../data/data/0002.jpg', cv2.IMREAD_GRAYSCALE)
@@ -115,8 +115,9 @@ matched_keypoints2 = keypoints_2[:, query_indices]
 rng = np.random.default_rng(random_seed)
 
 ## Apply Ransac to Obtain the Essential Matrix and inliers // skimage library
+# model, inliers = ransac((np.flipud(matched_keypoints1).T, np.flipud(matched_keypoints2).T), FundamentalMatrixTransform, min_samples=8, # EssentialMatrixTransform
 model, inliers = ransac((matched_keypoints1.T, matched_keypoints2.T), FundamentalMatrixTransform, min_samples=8, # EssentialMatrixTransform
-                        residual_threshold=1, max_trials=5000,
+                        residual_threshold=0.5, max_trials=5000,
                         random_state=rng)
 
 # F, inliers = ransacFundamentalMatrix(matched_keypoints1, matched_keypoints2)
@@ -153,7 +154,7 @@ P = linearTriangulation(p1, p2, M1, M2)
 # p1 = p1[:, inlier_mask]
 # p2 = p2[:, inlier_mask]
 # P = P[:, inlier_mask]
-# mask = (-5 < P[2,:]) & (P[2,:] < 5)
+# mask = (0 < P[2,:])
 # P = P[:,mask]
 
 

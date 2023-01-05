@@ -26,23 +26,7 @@ from state import State
 from initialization import initialization
 from continuous_operation import processFrame
 
-
 matplotlib.use('TkAgg')
-
-# Parameters used in previous exercises
-corner_patch_size = 9
-harris_kappa = 0.08
-num_keypoints = 200 #1000
-nonmaximum_supression_radius = 8
-descriptor_radius = 9
-match_lambda = 5
-
-baseline = 0.54
-patch_radius = 5
-min_disp = 5
-max_disp = 50
-
-random_seed = 9
 
 dataset = 'PARKING' # 'KITTI', 'PARKING'
 if dataset == 'KITTI':
@@ -109,7 +93,7 @@ for i in range(1, num_frames):
     ax = fig.add_subplot(gs[:,2:])
     # ax = fig.add_subplot(gs[0,2])
     ax.plot(np.arange(2), np.arange(2))
-    ax.scatter(curr_state.landmarks[0,:], curr_state.landmarks[1,:], color='k', s=5)
+    ax.scatter(curr_state.landmarks[0,:], curr_state.landmarks[2,:], color='k', s=5)
     ax.set_title('Trajectory of last 20 frames and landmarks')
 
 

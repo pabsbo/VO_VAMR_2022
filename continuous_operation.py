@@ -26,11 +26,8 @@ from state import State
 # Parameters used in previous exercises
 corner_patch_size = 9
 harris_kappa = 0.08
-num_keypoints = 200 #1000
 num_candidate_keypoints = 50 #1000
 nonmaximum_supression_radius = 8
-descriptor_radius = 9
-match_lambda = 5
 
 # KLT parameters
 r_T = 15
@@ -38,7 +35,8 @@ n_iter = 50
 threshold = 0.1
 
 # Re-triangulation parameters
-baseline_threshold = 1.0
+overlap_threshold = 3
+baseline_threshold = 3.0
 
 def processFrame(curr_img, prev_img, prev_state : State, K):
     curr_state = copy.deepcopy(prev_state)
@@ -68,7 +66,7 @@ def processFrame(curr_img, prev_img, prev_state : State, K):
     candidate_keypoints = np.flipud(candidate_keypoints) # now (u,v)
 
     # Choose keypoints NOT redundant with curr_keypoints / existing candidate_keypoints
-    in_curr_keypoints = (np.linalg.norm(np.repeat(matched_curr_keypoints, candidate_keypoints.shape[1], axis=1) - np.tile(candidate_keypoints, matched_curr_keypoints.shape[1]), axis=0) < 5).nonzero()[0] % candidate_keypoints.shape[1]
+    in_curr_keypoints = (np.linalg.norm(np.repeat(matched_curr_keypoints, candidate_keypoints.shape[1], axis=1) - np.tile(candidate_keypoints, matched_curr_keypoints.shape[1]), axis=0) < overlap_threshold).nonzero()[0] % candidate_keypoints.shape[1]
     in_curr_keypoints = np.unique(in_curr_keypoints)
     if prev_state.candidate_keypoints is not None:
         dkp = np.zeros_like(prev_state.candidate_keypoints)
@@ -79,7 +77,7 @@ def processFrame(curr_img, prev_img, prev_state : State, K):
             keep[j] = k
         prev_candidate_in_curr_img = prev_state.candidate_keypoints + dkp
         prev_candidate_in_curr_img = prev_candidate_in_curr_img[:, keep]
-        in_prev_candidate = (np.linalg.norm(np.repeat(prev_candidate_in_curr_img, candidate_keypoints.shape[1], axis=1) - np.tile(candidate_keypoints, prev_candidate_in_curr_img.shape[1]), axis=0) < 5).nonzero()[0] % candidate_keypoints.shape[1]
+        in_prev_candidate = (np.linalg.norm(np.repeat(prev_candidate_in_curr_img, candidate_keypoints.shape[1], axis=1) - np.tile(candidate_keypoints, prev_candidate_in_curr_img.shape[1]), axis=0) < overlap_threshold).nonzero()[0] % candidate_keypoints.shape[1]
         in_prev_candidate = np.unique(in_prev_candidate)
         invalid_candidate_keypoints = np.unique(np.r_[in_curr_keypoints, in_prev_candidate])
 
@@ -108,8 +106,14 @@ def processFrame(curr_img, prev_img, prev_state : State, K):
     for valid_baseline in valid_baselines:
         triangulation_mask = (valid_baseline == baselines)
 
-        p1 = np.r_[curr_state.candidate_keypoints[:,triangulation_mask], np.ones((1, triangulation_mask.sum()))]
-        p2 = np.r_[curr_state.first_obs_keypoints[:,triangulation_mask], np.ones((1, triangulation_mask.sum()))]
+        p1 = np.r_[curr_state.first_obs_keypoints[:,triangulation_mask], np.ones((1, triangulation_mask.sum()))]
+        p2 = np.r_[curr_state.candidate_keypoints[:,triangulation_mask], np.ones((1, triangulation_mask.sum()))]
+
+        # E = estimateEssentialMatrix(p1, p2, K, K)
+        # Rots, u3 = decomposeEssentialMatrix(E)
+
+
+
         first_obs_pose = curr_state.first_obs_poses[:,triangulation_mask][:,0]
         M1 = K @ np.c_[first_obs_pose[:9].reshape(3,3), first_obs_pose[9:].reshape(3,1)]
         M2 = K @ np.c_[R_C_W, T_C_W]
@@ -124,4 +128,4 @@ def processFrame(curr_img, prev_img, prev_state : State, K):
     curr_state.first_obs_poses = curr_state.first_obs_poses[:,~total_triangulation_mask]
     curr_state.first_obs_position = curr_state.first_obs_position[:,~total_triangulation_mask]
 
-    return curr_state, R_C_W, T_C_W, inlier_mask, 
+    return curr_state, R_C_W, T_C_W, inlier_mask
